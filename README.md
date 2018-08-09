@@ -15,15 +15,15 @@ _Note: For my tests, I chose to run the docker image [https://hub.docker.com/r/m
 Build the project source code
 
 ```
-$ cd $PROJECT_ROOT
-$ mvn clean install
+cd $PROJECT_ROOT
+mvn clean install
 ```
 
 ## Deploying to a standalone WidlFly server
 
 ```
-$ cd $PROJECT_ROOT
-$ mvn wildfly:deploy
+cd $PROJECT_ROOT
+mvn wildfly:deploy
 ```
 
 ## Running the example in OpenShift

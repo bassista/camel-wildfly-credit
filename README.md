@@ -43,7 +43,7 @@ oc create -f src/main/kube/configmap.yml
 oc create -f src/main/kube/secret.yml
 oc secrets add sa/camel-wildfly-credit-sa secret/camel-wildfly-credit-secret
 oc policy add-role-to-user view system:serviceaccount:fuse:camel-wildfly-credit-sa
-mvn -Popenshift clean install fabric8:deploy
+mvn -Popenshift fabric8:deploy
 ```
 
 ## Testing the code

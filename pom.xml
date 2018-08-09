@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.apache.camel.examples</groupId>
-  <artifactId>camel-swarm-credit</artifactId>
+  <artifactId>camel-wildfly-credit</artifactId>
   <version>1.0.0-SNAPSHOT</version>
 
   <packaging>war</packaging>
@@ -19,27 +19,18 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <maven-war-plugin.version>3.2.2</maven-war-plugin.version>
-    <fabric8-maven-plugin.version>3.5.39</fabric8-maven-plugin.version>
+    <fabric8-maven-plugin.version>3.5.41</fabric8-maven-plugin.version>
+    <wildfly-maven-plugin.version>1.2.2.Final</wildfly-maven-plugin.version>
 
-    <wildfly-swarm.version>2018.3.3</wildfly-swarm.version>
-    <camel.version>2.21.0.fuse-000077-redhat-1</camel.version>
-    <mysql.version>8.0.11</mysql.version>
-    <groovy.version>2.4.11</groovy.version>
+    <fuse.version>7.0.1.fuse-000008-redhat-4</fuse.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>org.apache.camel</groupId>
-        <artifactId>camel-bom</artifactId>
-        <version>${camel.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.wildfly.swarm</groupId>
-        <artifactId>bom</artifactId>
-        <version>${wildfly-swarm.version}</version>
+        <groupId>org.jboss.redhat-fuse</groupId>
+        <artifactId>fuse-eap-bom</artifactId>
+        <version>${fuse.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -48,74 +39,69 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
-      <artifactId>jaxrs</artifactId>
+      <groupId>javax.inject</groupId>
+      <artifactId>javax.inject</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
-      <artifactId>monitor</artifactId>
+      <groupId>javax.enterprise</groupId>
+      <artifactId>cdi-api</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
-      <artifactId>cdi</artifactId>
+      <groupId>org.jboss.spec.javax.ws.rs</groupId>
+      <artifactId>jboss-jaxrs-api_2.0_spec</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
-      <artifactId>datasources</artifactId>
+      <groupId>org.jboss.spec.javax.transaction</groupId>
+      <artifactId>jboss-transaction-api_1.2_spec</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
-      <artifactId>transactions</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
-      <version>${mysql.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.wildfly.swarm</groupId>
+      <groupId>org.apache.camel</groupId>
       <artifactId>camel-core</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
+      <groupId>org.apache.camel</groupId>
       <artifactId>camel-cdi</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
+      <groupId>org.apache.camel</groupId>
       <artifactId>camel-jackson</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
+      <groupId>org.apache.camel</groupId>
       <artifactId>camel-sql</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
+      <groupId>org.apache.camel</groupId>
       <artifactId>camel-http4</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.wildfly.swarm</groupId>
+      <groupId>org.apache.camel</groupId>
       <artifactId>camel-base64</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.camel</groupId>
       <artifactId>camel-groovy</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.wildfly.swarm</groupId>
-        <artifactId>wildfly-swarm-plugin</artifactId>
-        <version>${wildfly-swarm.version}</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>package</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
@@ -124,7 +110,72 @@
           <failOnMissingWebXml>false</failOnMissingWebXml>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.wildfly.plugins</groupId>
+        <artifactId>wildfly-maven-plugin</artifactId>
+        <version>${wildfly-maven-plugin.version}</version>
+      </plugin>
     </plugins>
   </build>
+  
+  <profiles>
+    <profile>
+      <id>openshift</id>
+      <properties>
+        <project.image.from>registry.access.redhat.com/fuse7/fuse-eap-openshift:1.0</project.image.from>
+        <project.image.userHome>/home/jboss</project.image.userHome>
+        <project.image.deployDir>/deployments</project.image.deployDir>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>io.fabric8</groupId>
+            <artifactId>fabric8-maven-plugin</artifactId>
+            <version>${fabric8-maven-plugin.version}</version>
+            <configuration>
+              <generateRoute>false</generateRoute>
+              <buildStrategy>docker</buildStrategy>
+              <images>
+                <image>
+                  <name>%g/%a:%l</name>
+                  <build>
+                    <from>${project.image.from}</from>
+                    <runCmds>
+                      <run>cp ${project.image.userHome}/${project.image.deployDir}/* /deployments/</run>
+                    </runCmds>
+                    <assembly>
+                      <targetDir>${project.image.userHome}</targetDir>
+                      <inline>
+                        <dependencySets>
+                          <dependencySet>
+                            <includes>
+                              <include>${project.groupId}:${project.artifactId}</include>
+                            </includes>
+                            <fileMode>0664</fileMode>
+                            <directoryMode>0775</directoryMode>
+                            <outputDirectory>deployments</outputDirectory>
+                            <outputFileNameMapping>ROOT.war</outputFileNameMapping>
+                          </dependencySet>
+                        </dependencySets>
+                      </inline>
+                    </assembly>
+                  </build>
+                </image>
+              </images>
+            </configuration>
+            <executions>
+              <execution>
+                <id>fabric8</id>
+                <goals>
+                  <goal>resource</goal>
+                  <goal>build</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>

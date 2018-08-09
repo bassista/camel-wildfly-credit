@@ -1,1 +1,1 @@
-# camel-swarm-credit
+# camel-wildfly-credit

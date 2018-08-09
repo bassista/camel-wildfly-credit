@@ -13,69 +13,59 @@
  */
 package org.apache.camel.examples;
 
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Map;
+import java.util.List;
+import java.util.Properties;
+import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.Dependent;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import javax.sql.DataSource;
-import javax.transaction.UserTransaction;
+import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.cdi.ContextName;
-import org.apache.camel.model.dataformat.JsonLibrary;
+import org.apache.camel.component.properties.PropertiesComponent;
 import org.apache.camel.processor.validation.PredicateValidationException;
-import org.apache.camel.spring.spi.SpringTransactionPolicy;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.jta.JtaTransactionManager;
-import org.wildfly.swarm.spi.runtime.annotations.ConfigurationValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 @ContextName("camel-context")
-public class CamelConfig extends RouteBuilder {
+public class CamelConfiguration extends RouteBuilder {
+
+  private static final Logger log = LoggerFactory.getLogger(CamelConfiguration.class);
 
   @Inject
-  @ConfigurationValue("application.audit.host")
-  private String auditHost;
+  @ContextName("camel-context")
+  private CamelContext camelContext;
   
-  @Inject
-  @ConfigurationValue("application.audit.port")
-  private String auditPort;
-  
-  @Inject
-  @ConfigurationValue("application.audit.path")
-  private String auditPath;
-  
-  @Produces
-  @Named("mysqlDS")
-  public DataSource mysqlDS() throws NamingException {
-    InitialContext context = null;
-    DataSource mysqlDS = null;
-    try {
-      context = new InitialContext();
-      return (DataSource) context.lookup("java:jboss/datasources/mysqlDS");
-    } finally {
-      if (context != null) context.close();
+  @PostConstruct
+  private void initializePropertyPlaceholder() {
+    PropertiesComponent properties = camelContext.getComponent("properties", PropertiesComponent.class);
+
+    List<String> propertyLocations = new ArrayList<>();
+    propertyLocations.add("classpath:/application.properties;optional=true");
+    propertyLocations.add("file:${user.home}/application.properties;optional=true");
+    propertyLocations.add("file:${camel.config.location};optional=true");
+    if (System.getProperty("camel.config.locations") != null) {
+      for (String location : System.getProperty("camel.config.locations").split(",")) {
+        propertyLocations.add("file:" + location + ";optional=true");
+      }
     }
-  }
-  
-  @Produces 
-  @Named("transactionManager")
-  public PlatformTransactionManager transactionManager(UserTransaction userTransaction) {
-    JtaTransactionManager transactionManager = new JtaTransactionManager(userTransaction);
-    transactionManager.afterPropertiesSet();
-    return transactionManager;
-  }
-  
-  @Produces
-  @Named("requiredTransactionPolicy")
-  public SpringTransactionPolicy requiredTransactionPolicy(PlatformTransactionManager transactionManager) {
-    SpringTransactionPolicy policy = new SpringTransactionPolicy(transactionManager);
-    policy.setPropagationBehaviorName("PROPAGATION_REQUIRED");
-    return policy;
+    propertyLocations.add("file:${env:CAMEL_CONFIG_LOCATION};optional=true");
+    if (System.getenv("CAMEL_CONFIG_LOCATIONS") != null) {
+      for (String location : System.getenv("CAMEL_CONFIG_LOCATIONS").split(",")) {
+        propertyLocations.add("file:" + location + ";optional=true");
+      }
+    }
+    properties.setLocations(propertyLocations);
+    
+    Properties overrideProperties = new Properties();
+    overrideProperties.putAll(System.getenv());
+    overrideProperties.putAll(System.getProperties());
+    properties.setOverrideProperties(overrideProperties);
   }
   
   @Produces
@@ -88,9 +78,9 @@ public class CamelConfig extends RouteBuilder {
   @Override
   public void configure() throws Exception {
     
-    from("direct:rest_getScore")
+    from("direct:getScore")
       .log("Fetching credit score for [${body}]")
-      .to("sql:select * from credit_score where ssn = :#${body} order by version desc?dataSource=#mysqlDS")
+      .to("sql:select * from credit_score where ssn = :#${body} order by version desc")
       .filter().simple("${body} == ${null} || ${body.size()} == 0")
         .setBody().groovy("javax.ws.rs.core.Response.status(404).entity(null).build()")
         .stop()
@@ -98,7 +88,7 @@ public class CamelConfig extends RouteBuilder {
       .setBody().groovy("javax.ws.rs.core.Response.status(200).entity(['creditScore':request.body[0]?.get('score')]).build()")
     ;
     
-    from("direct:rest_postScores")
+    from("direct:postScores")
       .onException(PredicateValidationException.class)
         .handled(true)
         .log("Error processing credit scores: [${exception.message}]")
@@ -112,14 +102,14 @@ public class CamelConfig extends RouteBuilder {
         .markRollbackOnly()
       .end()
       .log("Processing credit scores: [${body}]")
-      .transacted("requiredTransactionPolicy")
+      .transacted("PROPAGATION_REQUIRED")
       .split(simple("${body[creditScores]}"))
         .shareUnitOfWork()
         .parallelProcessing(false)
         .stopOnException()
         .validate().simple("${body[ssn]} regex '^\\d{3}-\\d{2}-\\d{4}$'").end()
         .validate().simple("${body[score]} >= 300 && ${body[score]} <= 850").end()
-        .to("sql:insert into credit_score values (:#${body[ssn]}, :#${body[score]}, :#${ref:currentDate})?dataSource=#mysqlDS")
+        .to("sql:insert into credit_score values (:#${body[ssn]}, :#${body[score]}, :#${ref:currentDate})")
       .end()
       .setBody().groovy("javax.ws.rs.core.Response.status(200).entity(null).build()")
     ;

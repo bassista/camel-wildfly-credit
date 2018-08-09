@@ -1,0 +1,10 @@
+metadata:
+  name: ${project.artifactId}-http
+  annotations:
+    description: "The HTTP server application port."
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  

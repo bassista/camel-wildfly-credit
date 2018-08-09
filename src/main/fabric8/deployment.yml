@@ -1,0 +1,67 @@
+spec:
+  template:
+    spec:
+      serviceAccountName: ${project.artifactId}-sa
+      containers:
+      - name: ${project.artifactId}
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: ping
+          containerPort: 8888
+        - name: jolokia
+          containerPort: 8778
+        env:
+        - name: JGROUPS_PING_PROTOCOL
+          value: openshift.DNS_PING
+        - name: OPENSHIFT_DNS_PING_SERVICE_NAME
+          value: ${project.artifactId}-ping
+        - name: OPENSHIFT_DNS_PING_SERVICE_PORT
+          value: 8888
+        - name: JGROUPS_CLUSTER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ${project.artifactId}-secret
+              key: jgroups.cluster.password
+        - name: DB_SERVICE_PREFIX_MAPPING
+          value: CREDIT_MYSQL
+        - name: CREDIT_MYSQL_JNDI
+          value: "java:jboss/datasources/CreditDS"
+        - name: CREDIT_MYSQL_DATABASE
+          valueFrom: 
+            configMapKeyRef:
+              name: ${project.artifactId}-configmap
+              key: datasource.database
+        - name: CREDIT_MYSQL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: ${project.artifactId}-secret
+              key: datasource.username
+        - name: CREDIT_MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ${project.artifactId}-secret
+              key: datasource.password
+        - name: CREDIT_MYSQL_XA_CONNECTION_PROPERTY_URL
+          valueFrom: 
+            configMapKeyRef:
+              name: ${project.artifactId}-configmap
+              key: datasource.url
+        livenessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "/opt/eap/bin/livenessProbe.sh"
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "/opt/eap/bin/readinessProbe.sh"
+        resources:
+          requests:
+            cpu: "0.2"
+          limits:
+            cpu: "4.0"

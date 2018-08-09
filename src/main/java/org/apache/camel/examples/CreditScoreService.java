@@ -34,12 +34,12 @@ public class CreditScoreService {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   public Response getScore(@QueryParam("ssn") String ssn) {
-    return producer.requestBody("direct:rest_getScore", ssn, Response.class);
+    return producer.requestBody("direct:getScore", ssn, Response.class);
   }
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   public Response postScores(Map<String, Object> scores) {
-    return producer.requestBody("direct:rest_postScores", scores, Response.class);
+    return producer.requestBody("direct:postScores", scores, Response.class);
   }
 }
